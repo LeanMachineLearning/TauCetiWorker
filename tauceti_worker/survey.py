@@ -391,6 +391,9 @@ class Survey:
     overlap_scan: WorkKind = field(default_factory=lambda: WorkKind("overlap-scan"))
     overlap_fix: WorkKind = field(default_factory=lambda: WorkKind("overlap-fix"))
     me_login: str = ""
+    # Other authors' PRs tended this round because nothing changed on them for TAUCETI_ADOPT_AFTER_HOURS
+    # (see adoption.py). The work units re-authorize each one before claiming it.
+    adopted: list[int] = field(default_factory=list)
     roadmap_only: str = ""
     roadmap_skip: list[str] = field(default_factory=list)
     # This is deliberately scoped by roadmap_only/roadmap_skip: authoring backpressure in a focused
@@ -925,10 +928,19 @@ def survey(
         p.author_is_bot and p.head_owner == TAUCETI_OWNER for p in nondraft
     )
     tend_bot = bot_on_canonical and can_push(TAUCETI) is True
+    # Plus, when TAUCETI_ADOPT_AFTER_HOURS is set, other authors' PRs on which nothing changed for that
+    # long (adoption.py); off by default.
+    from .adoption import adoptable
+
+    sv.adopted = sorted(p.number for p in nondraft if adoptable(p, me_login))
     tended = [
         p
         for p in nondraft
-        if (p.author == me_login or (tend_bot and p.author_is_bot and p.head_owner == TAUCETI_OWNER))
+        if (
+            p.author == me_login
+            or (tend_bot and p.author_is_bot and p.head_owner == TAUCETI_OWNER)
+            or p.number in sv.adopted
+        )
         and not {label.lower() for label in p.labels} & {"keep", "hold", "wip", "human", "on-hold", "do-not-close"}
     ]
     facts = {row["pr"]["number"]: row["review"] for row in compact or []}

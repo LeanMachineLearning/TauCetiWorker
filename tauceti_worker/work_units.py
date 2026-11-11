@@ -1832,6 +1832,19 @@ def _do_fixlike(
                 w.counters.write(key, max(0, w.counters.read(key) - 1))
             log(f"  {label} #{pr}: explicit fork repair scope is no longer valid — skipping")
             return None
+    # Another author's PR that the survey adopted after TAUCETI_ADOPT_AFTER_HOURS without changes:
+    # re-read it and this account's permission before claiming it (adoption.py).
+    adopted = not foreign and label in ("fix", "fix-ci", "rebase") and pr in getattr(sv, "adopted", ())
+    if adopted:
+        from .adoption import adopt_after_label
+        from .adoption import authorize as authorize_adoption
+
+        if not authorize_adoption(w.gh, pr, head, p):
+            for key in charged:
+                w.counters.write(key, max(0, w.counters.read(key) - 1))
+            log(f"  {label} #{pr}: no longer adoptable (moved, paused, or not pushable) — skipping")
+            return None
+        log(f"  {label} #{pr}: adopting @{p.author}'s PR, unchanged for {adopt_after_label()}")
     from .config import SourceUnavailable
 
     try:
@@ -1958,6 +1971,14 @@ def _do_fixlike(
             else "You may NOT close this PR: it is not your authored PR or has a special repair scope."
         ),
     )
+    if adopted:
+        prompt += (
+            f"\nThis PR is by @{p.author}. Nothing changed on it for at least {adopt_after_label()}, so "
+            "you are finishing it as a maintainer. Keep the author's intent and their commits: add yours "
+            "on top, and push them to the PR's own branch with git-safe-push (the branch lease and the "
+            "starting-head check apply as usual). If the head moved or a pause label appeared, the "
+            "author is back: stop without pushing. Do not close this PR.\n"
+        )
     if getattr(c, "final_resolution", False) and may_close:
         prompt += (
             "\nThis is the last permitted per-head repair attempt. "
