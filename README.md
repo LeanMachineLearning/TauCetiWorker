@@ -31,7 +31,8 @@ From there you launch whatever you want. Pin a worker to one kind of work with
 and let it pick the most useful job each round until you stop it.
 
 It runs as your authenticated `gh` account: you set up `gh auth`, the worker acts
-as that account, and it treats that account's own PRs as the ones it tends. The
+as that account, and it treats that account's own PRs as the ones it tends (a maintainer can
+also let it finish other authors' inactive PRs, see [Adopting inactive pull requests](docs/adoption.md)). The
 repo is hardwired to `TauCetiProject/TauCeti`. This is an operator's tool for that
 project, not a general framework. You author through **your own fork**: the worker
 forks `TauCetiProject/TauCeti` once, automatically, pushes authored branches and
